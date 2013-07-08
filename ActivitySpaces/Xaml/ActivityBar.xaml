@@ -1,0 +1,73 @@
+﻿<windows:Taskbar x:Class="ActivitySpaces.Xaml.ActivityBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+            xmlns:windows="clr-namespace:ABC.Windows;assembly=ABC.Windows"
+            mc:Ignorable="d" 
+            d:DesignHeight="40" 
+            d:DesignWidth="750" 
+            WindowStyle="None"
+           AllowDrop="True" MouseDown="ActivityBar_OnMouseDown">
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="Window Manager" Click="btnWin_click">
+                <MenuItem.Icon>
+                    <Image Source="..\Images\application_view_list.png" />
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Workspace Switches" Click="btnWs_click">
+                <MenuItem.Icon>
+                    <Image Source="..\Images\folder_wrench.png" />
+                </MenuItem.Icon>
+            </MenuItem>
+            <!--<MenuItem Header="Show Button Text" Click="btnRender_click" IsCheckable="true" IsChecked="false"/>-->
+            <MenuItem Header="ActivityBar Position">
+                <MenuItem.Icon>
+                    <Image Source="..\Images\tab.png" />
+                </MenuItem.Icon>
+                <MenuItem x:Name="btnLeft" Header="Left" Tag="1"  IsCheckable="true" IsChecked="False" Click="MenuItems_OnClick"></MenuItem>
+                <MenuItem x:Name="btnTop" Header="Top" Tag="2" IsCheckable="true" IsChecked="False" Click="MenuItems_OnClick" ></MenuItem>
+                <MenuItem x:Name="btnRight" Header="Right" Tag="3"  IsCheckable="true" IsChecked="False" Click="MenuItems_OnClick"></MenuItem>
+                <MenuItem x:Name="btnBottom" Header="Bottom" Tag="4"  IsCheckable="true" IsChecked="False" Click="MenuItems_OnClick"></MenuItem>
+            </MenuItem>
+            <MenuItem Header="Exit" Click="btnClose_click">
+                <MenuItem.Icon>
+                    <Image Source="..\Images\cross.png" />
+                </MenuItem.Icon>
+            </MenuItem>
+        </ContextMenu>
+
+    </Window.ContextMenu>
+    <Grid>
+        <Border x:Name="OuterBorder"  BorderBrush="Black" BorderThickness="0,0,0,1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border x:Name="InnerBorder" BorderBrush="#4CFFFFFF" BorderThickness="0,0,0,1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel Margin="{Binding ContentPanelMargin}" x:Name="pnlContent"  Orientation="{Binding PanelOrientation}" VerticalAlignment="Stretch"  HorizontalAlignment="Stretch" >
+                    <StackPanel x:Name="pnlButton"  Margin="{Binding PanelMargin}" Orientation="{Binding PanelOrientation}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
+                        <Button Width="{Binding StartButtonWidth}" MinWidth="60" MaxWidth="62" Height="{Binding StartButtonHeight}" 
+                                x:Name="btnStart" Click="StartButton_OnClick" HorizontalAlignment="stretch" VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                                  Foreground="{x:Null}" Template="{DynamicResource Dark}" Background="{x:Null}" BorderBrush="{x:Null}">
+                            <Image Source="..\Images\add.png" Width="20" Height="20" Margin="5" Tag="2"/>
+                            <!--<Button HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource StartButton}"  x:Name="startButton" 
+                                     Width="38" Height="37" BorderThickness="0" Background="#FF951500">
+                                <Image x:Name="imgStartButton" Width="27" Height="27" Source="../Images/activity.PNG" />
+                            </Button>-->
+                        </Button>
+                        <Button Margin="{Binding ButtonMargin}" Style="{DynamicResource ColorHotTrackButton}" Height="{Binding ButtonHeight}"
+                                x:Name="btnHome" Width="{Binding ButtonWidth}" HorizontalAlignment="stretch" VerticalAlignment="Stretch" 
+                                Click="BtnHomeClick" Background="#7FFFFFFF">
+                            <Image Source="..\Images\house.png" Width="20" Height="20" Margin="5" Tag="2"/>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Margin="{Binding PanelMargin}" x:Name="pnlActivityButtons" Orientation="{Binding PanelOrientation}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
+                                MouseDown="ActivityBar_OnMouseDown">
+                        <StackPanel.ContextMenu>
+                            <ContextMenu Visibility="Hidden"/>
+                        </StackPanel.ContextMenu>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</windows:Taskbar>

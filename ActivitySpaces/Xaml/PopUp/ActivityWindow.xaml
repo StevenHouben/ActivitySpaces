@@ -1,0 +1,24 @@
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
+        x:Class="ActivitySpaces.Xaml.PopUp.ActivityWindow" Height="94.5" Width="295" WindowState="Normal" WindowStyle="None"
+        Closing="Window_Closing" ShowInTaskbar="False">
+    <Grid >
+        <TextBox x:Name="txtActivity" TextWrapping="Wrap" Text="Activityname" Height="28" Margin="55,11,10,47" />
+
+        <Button x:Name="btnDone" Height="22" Width="75" Content="Done" Margin="192,44,10,10" Foreground="White"  
+                Style="{DynamicResource Success}" Click="btnDone_Click" />
+
+        <Button x:Name="btnDelete" Width="75" Content="Delete" Margin="111,44,89,10" Foreground="White"
+                Style="{DynamicResource Danger}" Height="22" Click="btnDelete_Click" />
+
+        <Button x:Name="btnChangePic" Style="{DynamicResource White}" Click="BtnChangePic_OnClick" Height="28" Margin="8,6,237,42">
+            <Image x:Name="image" Width="33" Source="/ActivitySpaces;component/Images/activity.PNG"   />
+        </Button >
+        <CheckBox x:Name="chkRendering" Content="Show Text" HorizontalAlignment="Left" Margin="10,52,0,0" VerticalAlignment="Top" 
+                  IsChecked="True"  Width="88"/>
+
+
+
+    </Grid>
+</Window>
