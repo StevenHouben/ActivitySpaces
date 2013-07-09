@@ -1,4 +1,4 @@
-﻿<windows:Taskbar x:Class="ActivitySpaces.Xaml.ActivityBar"
+﻿<windows:Appbar x:Class="ActivitySpaces.Xaml.ActivityBar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -16,7 +16,7 @@
                     <Image Source="..\Images\application_view_list.png" />
                 </MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Workspace Switches" Click="btnWs_click">
+            <MenuItem Header="Workspace Switcher" Click="btnWs_click">
                 <MenuItem.Icon>
                     <Image Source="..\Images\folder_wrench.png" />
                 </MenuItem.Icon>
@@ -70,4 +70,4 @@
             </Border>
         </Border>
     </Grid>
-</windows:Taskbar>
+</windows:Appbar>

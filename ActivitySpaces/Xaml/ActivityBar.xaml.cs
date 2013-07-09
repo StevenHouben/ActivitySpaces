@@ -24,16 +24,17 @@ using ModifierKeys = ActivitySpaces.Input.ModifierKeys;
 using System.Windows.Controls;
 using Binding = System.Windows.Data.Binding;
 using Orientation = System.Windows.Controls.Orientation;
+using System.Windows.Media;
 
 namespace ActivitySpaces.Xaml
 {
     public partial class ActivityBar : INotifyPropertyChanged
     {
-        public static DataLogger Datalog = new DataLogger(AppDomain.CurrentDomain.BaseDirectory + "/log/" + Guid.NewGuid() + ".log");
+        public static DataLogger Datalog;
 
         private readonly List<Window> _popUpWindows = new List<Window>();
         private readonly Dictionary<string, Proxy> _proxies = new Dictionary<string, Proxy>();
-        private readonly DesktopManager _desktopManager = new DesktopManager(new LoadedSettings());
+        private readonly VirtualDesktopManager _desktopManager = new VirtualDesktopManager(new LoadedSettings());
         private readonly WindowMonitor _windowMonitor = new WindowMonitor();
         private readonly KeyboardHook _keyboard = new KeyboardHook();
 
@@ -163,6 +164,8 @@ namespace ActivitySpaces.Xaml
             }
         }
 
+        string _dataDirectory;
+
         public ActivityBar()
         {
             InitializeComponent();
@@ -176,6 +179,16 @@ namespace ActivitySpaces.Xaml
             HorizontalModeSize = 40;
 
             _startupDesktopPath = Environment.GetFolderPath( Environment.SpecialFolder.Desktop );
+
+            var logDirectory = AppDomain.CurrentDomain.BaseDirectory + "/log/";
+            if (!Directory.Exists(logDirectory))
+                Directory.CreateDirectory(logDirectory);
+
+            var _dataDirectory = AppDomain.CurrentDomain.BaseDirectory + "/data/";
+            if (!Directory.Exists(_dataDirectory))
+                Directory.CreateDirectory(_dataDirectory);
+
+            Datalog = new DataLogger(logDirectory + Guid.NewGuid() + ".log");
 
             _activityWindow = new ActivityWindow( this );
             _popUpWindows.Add( _activityWindow );
@@ -314,7 +327,7 @@ namespace ActivitySpaces.Xaml
                 var path = Directory.CreateDirectory(@"c://activities/" + activity.Id);
                 var p = new Proxy {Desktop = _desktopManager.CreateEmptyDesktop(path.FullName), Activity = activity};
 
-                var b = new ActivityButton(new Uri("pack://application:,,,/Images/activity.PNG"), activity.Name) { RenderMode = _selectedRenderStyle, ActivityId = p.Activity.Id, AllowDrop = true };
+                var b = new ActivityButton(new Uri("pack://application:,,,/Images/activity.PNG"), activity.Name,this) { RenderMode = _selectedRenderStyle, ActivityId = p.Activity.Id, AllowDrop = true };
 
                 p.Button = b;
                 InitializeActivitySpacesButton( b );
@@ -435,7 +448,7 @@ namespace ActivitySpaces.Xaml
         }
         public void ExitApplication()
         {
-            DesktopFolderSwitcher.ChangeDesktopFolder(_startupDesktopPath);
+            DesktopManager.ChangeDesktopFolder(_startupDesktopPath);
 
             HideAllPopups();
 
@@ -450,7 +463,7 @@ namespace ActivitySpaces.Xaml
         private void SaveActivities()
         {
             var s = new DataContractSerializer(typeof(List<SavedProxy>));
-            using (var fs = File.Open(AppDomain.CurrentDomain.BaseDirectory + "/data/activities.xml", FileMode.Create))
+            using (var fs = File.Open(_dataDirectory + "activities.xml", FileMode.Create))
             {
                 var sProxList = (from prox in _proxies.Values where prox != _homeProxy select prox.GetSaveableProxy()).ToList();
                 s.WriteObject(fs, sProxList);
@@ -458,9 +471,9 @@ namespace ActivitySpaces.Xaml
         }
         private void LoadActivities()
         {
-            if (!File.Exists(AppDomain.CurrentDomain.BaseDirectory + "/data/activities.xml")) return;
+            if (!File.Exists(_dataDirectory + "activities.xml")) return;
             var s = new DataContractSerializer(typeof(List<SavedProxy>));
-            using (var fs = File.Open(AppDomain.CurrentDomain.BaseDirectory + "/data/activities.xml", FileMode.Open))
+            using (var fs = File.Open(_dataDirectory+ "activities.xml", FileMode.Open))
             {
                 var list = (List<SavedProxy>)s.ReadObject(fs);
                 foreach (var sProx in list)
@@ -468,7 +481,7 @@ namespace ActivitySpaces.Xaml
                     var proxy = new Proxy
                         {
                             Activity = sProx.Activity,
-                            Button = new ActivityButton
+                            Button = new ActivityButton(this)
                                 {
                                     RenderMode = sProx.Button.RenderMode,
                                     Image = sProx.Button.Image,
@@ -487,10 +500,9 @@ namespace ActivitySpaces.Xaml
         }
         private void UpdateActivityButtons()
         {
-            //foreach (var prox in _proxies.Values.Where(prox => prox != _homeProxy))
-            //    prox.Button.Selected = prox == _currentProxy;
-            //btnHome.Background = _currentProxy != _homeProxy ? new SolidColorBrush(Color.FromArgb(255, 162, 159, 159)) 
-            //    : new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
+            foreach (var prox in _proxies.Values.Where(prox => prox != _homeProxy))
+                prox.Button.Selected = prox == _currentProxy;
+            btnHome.Background.Opacity = _currentProxy != _homeProxy ? 0 : 0.5;
         }
         private void SwitchToHome()
         {

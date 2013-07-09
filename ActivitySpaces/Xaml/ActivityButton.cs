@@ -12,12 +12,14 @@ using Color = System.Windows.Media.Color;
 using Image = System.Windows.Controls.Image;
 using Point = System.Windows.Point;
 
-
 namespace ActivitySpaces.Xaml
 {
     public class ActivityButton : Button
     {
         #region Properties
+
+
+        private ActivityBar _activityBar;
 
         public string ActivityId { get; set; }
         Uri _image;
@@ -45,7 +47,6 @@ namespace ActivitySpaces.Xaml
             }
         }
 
-        RenderMode _internalRenderMode = RenderMode.Image;
         RenderMode _renderMode;
 
         public RenderMode RenderMode
@@ -67,7 +68,9 @@ namespace ActivitySpaces.Xaml
             set
             {
                 _selected = value;
-                //Background = _selected ? new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)) : new SolidColorBrush(Colors.Transparent);
+                Background = _selected ? new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)) : new SolidColorBrush(Colors.Transparent);
+                if (!Selected)
+                    CalculateColorTracking();
             }
         }
 
@@ -76,11 +79,14 @@ namespace ActivitySpaces.Xaml
 
         #region Constructor
 
-        public ActivityButton()
+        public ActivityButton(ActivityBar activityBar)
         {
             Image = new Uri( "pack://application:,,,/Images/activity.PNG" );
             Text = "Default";
+            _activityBar = activityBar;
+            
             Initialize();
+
         }
 
         void Initialize()
@@ -97,10 +103,8 @@ namespace ActivitySpaces.Xaml
             SizeChanged += ActivityButton_SizeChanged;
         }
 
-        bool _renderAsImage = false;
         void ActivityButton_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            _renderAsImage = Width < 100;
             Invalidate();
         }
 
@@ -110,10 +114,11 @@ namespace ActivitySpaces.Xaml
             CalculateColorTracking();
         }
 
-        public ActivityButton( Uri img, string text )
+        public ActivityButton(Uri img, string text, ActivityBar activityBar)
         {
             Image = img;
             Text = text;
+            _activityBar = activityBar;
             Initialize();
         }
         public SavedButton GetSaveableButton()
@@ -148,7 +153,7 @@ namespace ActivitySpaces.Xaml
                         break;
                     default:
                     {
-                        if ( !_renderAsImage )
+                        if (_activityBar.BarOrientation != System.Windows.Controls.Orientation.Vertical )
                         {
                             var img = new Image { Source = new BitmapImage(Image), Margin = new Thickness(5) };
                             panel.Children.Add(img);
@@ -208,70 +213,40 @@ namespace ActivitySpaces.Xaml
                 byte g = (byte)Math.Floor((double)(tg / (bitmap.Height * bitmap.Width)));
                 byte b = (byte)Math.Floor((double)(tb / (bitmap.Height * bitmap.Width)));
 
-                //var brush = new LinearGradientBrush {EndPoint = new Point(0.5, 1.0), StartPoint = new Point(0.5, 0.0)};
-
-
-                //brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(0xFF, r, g, b), 0.00));
-                //brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(0x00, r, g, b), 1.00));
-
                 var radialGradient = new RadialGradientBrush
                     {
-                        GradientOrigin = new Point(0.5, 0.5),
-                        Center = new Point(0.5, 1),
-                        RadiusX = 0.9,
-                        RadiusY = 0.9,
-                        SpreadMethod = GradientSpreadMethod.Pad
+                        RadiusX = 1,
+                        RadiusY = 1
                     };
-                //radialGradient.GradientStops.Add(new GradientStop(Colors.White, 0.00));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(255, r, g, b), 1.00));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(100, r, g, b), 2.00));
 
-                radialGradient.GradientStops.Add(new GradientStop(Colors.White, 0.00));
-                radialGradient.GradientStops.Add(new GradientStop(Color.FromArgb(250, r, g, b), 0.8));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(175, r, g, b), 0.6));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(255, r, g, b), 1));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(225, r, g, b), 0.75));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(250, r, g, b), 1));
-                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(175, r, g, b), 2.00));
+                radialGradient.GradientStops.Add(new GradientStop(Color.FromArgb(255, 255, 255, 255), 0));
+                radialGradient.GradientStops.Add(new GradientStop(Color.FromArgb(255, r, g, b), 0.6));
+                radialGradient.GradientStops.Add(new GradientStop(Color.FromArgb(100, r, g, b), 1));
                 Background = radialGradient;
             }
 
         }
-        public static Color Blend(Color color, Color backColor, double amount,byte alpha)
-        { 
-            byte r = (byte)((color.R * amount) + backColor.R * (1 - amount));
-            byte g = (byte)((color.G * amount) + backColor.G * (1 - amount));
-            byte b = (byte)((color.B * amount) + backColor.B * (1 - amount));
-            return Color.FromArgb(alpha,r, g, b);
-        }
-
         void ActivityButton_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
-
-            //// Get the brush
-            //LinearGradientBrush b = element.GetValue( Control.BackgroundProperty ) as LinearGradientBrush;
-
-            //// Get the ActualWidth of the sender
-            //Double refZeroX = (double)element.GetValue( FrameworkElement.ActualWidthProperty );
-
-            //// Get the new poit for the StartPoint and EndPoint of the Gradient
-            //var p = new Point( e.GetPosition( element ).X / refZeroX, 1 );
-
-            //// Set the new values
-            //if ( b == null ) return;
-            //b.StartPoint = new Point( 1 - p.X, 0 );
-            //b.EndPoint = p;
-
             var b = Background as RadialGradientBrush;
 
-            // Get the new poit for the StartPoint and EndPoint of the Gradient
-            var p = new Point(e.GetPosition(this).X / ActualWidth, e.GetPosition(this).Y / ActualWidth);
-
-            b.Transform =  new TranslateTransform(0,2);
-            // Set the new values
             if (b == null) return;
-            //b.GradientOrigin = new Point(1 - p.X, 0);
-            b.Center = p;
+
+            Point p;
+            if (_activityBar.BarOrientation == System.Windows.Controls.Orientation.Horizontal)
+            {
+                p = new Point(e.GetPosition(this).X / ActualWidth, 1);
+                b.Transform = new TranslateTransform(0, 5);
+                b.Center = new Point(0.5, 1);
+                b.GradientOrigin = p;
+            }
+            else
+            {
+                p = new Point(0.5, e.GetPosition(this).Y / ActualHeight);
+                b.GradientOrigin = new Point(0.5, 0.5);
+                b.Center = p;
+            }
+
         }
     }
 
