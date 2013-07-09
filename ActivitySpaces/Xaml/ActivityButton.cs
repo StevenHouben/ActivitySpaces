@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +8,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
 using Image = System.Windows.Controls.Image;
 using Point = System.Windows.Point;
 
@@ -187,64 +186,92 @@ namespace ActivitySpaces.Xaml
             var enc = new BmpBitmapEncoder();
             enc.Frames.Add( frame );
             enc.Save( stream );
+
             using ( var bitmap = new Bitmap( stream ) )
             {
-                // Create an Array to acomodate the colors from the image
-                var colors = new ArrayList();
+                var tr = 0;
+                var tg = 0;
+                var tb = 0;
 
-                // simple loop to load each color to the array
-                for ( var x = 0; x < bitmap.Width; x++ )
+                for (var x = 0; x < bitmap.Width; x++)
                 {
-                    for ( var y = 0; y < bitmap.Height; y++ )
+                    for (var y = 0; y < bitmap.Height; y++)
                     {
-                        var pixel = bitmap.GetPixel( x, y );
-                        // verify if the color is transparent because a color of #00000000 would darker the brush
-                        if ( pixel.A > 0x00 )
-                            colors.Add( pixel );
+                        var pixel = bitmap.GetPixel(x, y);
+                        tr += pixel.R;
+                        tg += pixel.G;
+                        tb += pixel.B;
                     }
                 }
 
-                // Using linq to get the average color RGB bytes
-                byte r = (byte)Math.Floor( colors.Cast<System.Drawing.Color>().Average( c => c.R ) );
-                byte g = (byte)Math.Floor( colors.Cast<System.Drawing.Color>().Average( c => c.G ) );
-                byte b = (byte)Math.Floor( colors.Cast<System.Drawing.Color>().Average( c => c.B ) );
+                byte r = (byte)Math.Floor((double)(tr / (bitmap.Height * bitmap.Width)));
+                byte g = (byte)Math.Floor((double)(tg / (bitmap.Height * bitmap.Width)));
+                byte b = (byte)Math.Floor((double)(tb / (bitmap.Height * bitmap.Width)));
 
-                // Instanciate and initialize the LinearGradientBrush that will be returned as the result of the operation
-                var brush = new LinearGradientBrush { EndPoint = new Point( 0.5, 1.0 ), StartPoint = new Point( 0.5, 0.0 ) };
-                brush.GradientStops.Add( new GradientStop( System.Windows.Media.Color.FromArgb( 0x00, r, g, b ), 0.00 ) );
-                brush.GradientStops.Add( new GradientStop( System.Windows.Media.Color.FromArgb( 0xFF, r, g, b ), 1.00 ) );
-                Background = brush;
+                //var brush = new LinearGradientBrush {EndPoint = new Point(0.5, 1.0), StartPoint = new Point(0.5, 0.0)};
+
+
+                //brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(0xFF, r, g, b), 0.00));
+                //brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(0x00, r, g, b), 1.00));
+
+                var radialGradient = new RadialGradientBrush
+                    {
+                        GradientOrigin = new Point(0.5, 0.5),
+                        Center = new Point(0.5, 1),
+                        RadiusX = 0.9,
+                        RadiusY = 0.9,
+                        SpreadMethod = GradientSpreadMethod.Pad
+                    };
+                //radialGradient.GradientStops.Add(new GradientStop(Colors.White, 0.00));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(255, r, g, b), 1.00));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(100, r, g, b), 2.00));
+
+                radialGradient.GradientStops.Add(new GradientStop(Colors.White, 0.00));
+                radialGradient.GradientStops.Add(new GradientStop(Color.FromArgb(250, r, g, b), 0.8));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(175, r, g, b), 0.6));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(255, r, g, b), 1));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(225, r, g, b), 0.75));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(250, r, g, b), 1));
+                //radialGradient.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(175, r, g, b), 2.00));
+                Background = radialGradient;
             }
+
+        }
+        public static Color Blend(Color color, Color backColor, double amount,byte alpha)
+        { 
+            byte r = (byte)((color.R * amount) + backColor.R * (1 - amount));
+            byte g = (byte)((color.G * amount) + backColor.G * (1 - amount));
+            byte b = (byte)((color.B * amount) + backColor.B * (1 - amount));
+            return Color.FromArgb(alpha,r, g, b);
         }
 
         void ActivityButton_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
-            // As already said the sender must be a Content Control
-            if ( !( sender is ContentControl ) )
-                return;
 
-            ContentControl element = sender as ContentControl;
+            //// Get the brush
+            //LinearGradientBrush b = element.GetValue( Control.BackgroundProperty ) as LinearGradientBrush;
 
-            // if the Brush is not a linearGradientBrush we dont need to do anything so just returns
-            if ( !( element.GetValue( Control.BackgroundProperty ) is LinearGradientBrush ) )
-            {
-                //element.SetValue(ContentControl.BackgroundProperty, new LinearGradientBrush());
-                return;
-            }
+            //// Get the ActualWidth of the sender
+            //Double refZeroX = (double)element.GetValue( FrameworkElement.ActualWidthProperty );
 
-            // Get the brush
-            LinearGradientBrush b = element.GetValue( Control.BackgroundProperty ) as LinearGradientBrush;
+            //// Get the new poit for the StartPoint and EndPoint of the Gradient
+            //var p = new Point( e.GetPosition( element ).X / refZeroX, 1 );
 
-            // Get the ActualWidth of the sender
-            Double refZeroX = (double)element.GetValue( FrameworkElement.ActualWidthProperty );
+            //// Set the new values
+            //if ( b == null ) return;
+            //b.StartPoint = new Point( 1 - p.X, 0 );
+            //b.EndPoint = p;
+
+            var b = Background as RadialGradientBrush;
 
             // Get the new poit for the StartPoint and EndPoint of the Gradient
-            var p = new Point( e.GetPosition( element ).X / refZeroX, 1 );
+            var p = new Point(e.GetPosition(this).X / ActualWidth, e.GetPosition(this).Y / ActualWidth);
 
+            b.Transform =  new TranslateTransform(0,2);
             // Set the new values
-            if ( b == null ) return;
-            b.StartPoint = new Point( 1 - p.X, 0 );
-            b.EndPoint = p;
+            if (b == null) return;
+            //b.GradientOrigin = new Point(1 - p.X, 0);
+            b.Center = p;
         }
     }
 
