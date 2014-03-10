@@ -87,15 +87,21 @@
     <StartupObject>ActivitySpaces.App</StartupObject>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Mono.Zeroconf, Version=4.0.0.90, Culture=neutral, PublicKeyToken=e60c4f4a95e1099e, processorArchitecture=MSIL">
-      <HintPath>..\packages\Mono.Zeroconf.0.9.0.0\lib\Net20\Mono.Zeroconf.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Zeroconf.Providers.Bonjour">
-      <HintPath>..\packages\Mono.Zeroconf.0.9.0.0\lib\Net20\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+    <Reference Include="ActivityDesk, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Newtonsoft.Json.4.5.11\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\..\ActivityDesk\ActivityDesk\bin\Debug\ActivityDesk.exe</HintPath>
+    </Reference>
+    <Reference Include="Magick.NET-x64, Version=6.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Magick.NET-Q16-x64.6.8.8.701\lib\net40-client\Magick.NET-x64.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Zeroconf, Version=4.0.0.90, Culture=neutral, PublicKeyToken=e60c4f4a95e1099e, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\NooSphere\NooSphere\NooSphere.Infrastructure\Libs\mono\Mono.Zeroconf.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Zeroconf.Providers.Bonjour, Version=4.0.0.90, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\NooSphere\NooSphere\NooSphere.Infrastructure\Libs\mono\Mono.Zeroconf.Providers.Bonjour.dll</HintPath>
     </Reference>
     <Reference Include="PresentationFramework.Aero" />
     <Reference Include="System" />
@@ -117,6 +123,10 @@
       <RequiredTargetFramework>4.0</RequiredTargetFramework>
     </Reference>
     <Reference Include="UIAutomationProvider" />
+    <Reference Include="Whathecode.System, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\ABC\ABC\Libraries\Framework Class Library Extension\Any CPU\Whathecode.System.dll</HintPath>
+    </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -128,9 +138,9 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Activity\Proxy.cs" />
+    <Compile Include="PdfConverter.cs" />
     <Compile Include="DataLogger.cs" />
     <Compile Include="Input\Keyboard.cs" />
-    <Compile Include="PDFConverter.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Xaml\ActivityButton.cs" />
     <Compile Include="Xaml\PopUp\ActivityWindow.xaml.cs">
@@ -256,9 +266,13 @@
     <Resource Include="Images\tab.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ABC\ABC\ABC.Model\ABC.Model.csproj">
-      <Project>{2eb224b2-07da-4231-84d0-2ef5fcbdd843}</Project>
-      <Name>ABC.Model</Name>
+    <ProjectReference Include="..\..\ABC\ABC\ABC.Applications\ABC.Applications.csproj">
+      <Project>{4fd0d614-3f1d-4c4b-ae41-69ef8660c94f}</Project>
+      <Name>ABC.Applications</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ABC\ABC\ABC.Common\ABC.Common.csproj">
+      <Project>{d53f1095-6dc0-4950-982f-3322aae74a50}</Project>
+      <Name>ABC.Common</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\ABC\ABC\ABC.PInvoke\ABC.PInvoke.csproj">
       <Project>{072142c4-284e-4f1a-a1fe-f886e8ecf728}</Project>
@@ -267,6 +281,14 @@
     <ProjectReference Include="..\..\ABC\ABC\ABC.Windows\ABC.Windows.csproj">
       <Project>{db8dbdf2-70bf-4712-86da-06674986bc12}</Project>
       <Name>ABC.Windows</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\NooSphere\NooSphere\NooSphere.Infrastructure\NooSphere.Infrastructure.csproj">
+      <Project>{cf6bf4de-e88f-448e-8f6b-f5e2a9e3b033}</Project>
+      <Name>NooSphere.Infrastructure</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\NooSphere\NooSphere\NooSphere.Model\NooSphere.Model.csproj">
+      <Project>{dc2a799f-b985-4a95-9b3c-fecfe14b8597}</Project>
+      <Name>NooSphere.Model</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

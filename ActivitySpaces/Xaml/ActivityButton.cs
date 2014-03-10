@@ -121,6 +121,7 @@ namespace ActivitySpaces.Xaml
             _activityBar = activityBar;
             Initialize();
         }
+
         public SavedButton GetSaveableButton()
         {
             return new SavedButton

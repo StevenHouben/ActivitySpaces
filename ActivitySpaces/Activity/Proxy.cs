@@ -7,7 +7,7 @@ namespace ActivitySpaces
     public class Proxy
     {
         public VirtualDesktop Desktop { get; set; }
-        public ABC.Model.Activity Activity{get;set;}    
+        public NooSphere.Model.Activity Activity{get;set;}    
         public ActivityButton Button { get; set; }
 
         public SavedProxy GetSaveableProxy()
@@ -26,7 +26,7 @@ namespace ActivitySpaces
     public class SavedProxy
     {
         [DataMember]	
-        public ABC.Model.Activity Activity { get; set; }
+        public NooSphere.Model.Activity Activity { get; set; }
 
         [DataMember]
         public SavedButton Button { get; set; }

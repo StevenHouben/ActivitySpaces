@@ -4,17 +4,21 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Threading;
-using ABC.Model;
+using NooSphere.Infrastructure.ActivityBase;
+using NooSphere.Infrastructure.Discovery;
+using NooSphere.Infrastructure.Helpers;
+using NooSphere.Infrastructure.Web;
+using NooSphere.Model;
 using ABC.Windows;
 using ABC.Windows.Desktop;
 using ABC.Windows.Desktop.Settings;
 using ActivitySpaces.Input;
 using ActivitySpaces.Xaml.PopUp;
+using NooSphere.Model.Device;
 using DataFormats = System.Windows.DataFormats;
 using DragDropEffects = System.Windows.DragDropEffects;
 using DragEventArgs = System.Windows.DragEventArgs;
@@ -24,7 +28,9 @@ using ModifierKeys = ActivitySpaces.Input.ModifierKeys;
 using System.Windows.Controls;
 using Binding = System.Windows.Data.Binding;
 using Orientation = System.Windows.Controls.Orientation;
-using System.Windows.Media;
+using WindowInfo = ABC.Windows.Window;
+using WPFWindow = System.Windows.Window;
+using System.Threading.Tasks;
 
 namespace ActivitySpaces.Xaml
 {
@@ -32,10 +38,14 @@ namespace ActivitySpaces.Xaml
     {
         public static DataLogger Datalog;
 
-        private readonly List<Window> _popUpWindows = new List<Window>();
+        private ActivityClient _client;
+        private Device _device;
+
+        #region VDM and UI
+        private readonly List<WPFWindow> _popUpWindows = new List<WPFWindow>();
         private readonly Dictionary<string, Proxy> _proxies = new Dictionary<string, Proxy>();
-        private readonly VirtualDesktopManager _desktopManager = new VirtualDesktopManager(new LoadedSettings());
-        private readonly WindowMonitor _windowMonitor = new WindowMonitor();
+
+        public static VirtualDesktopManager DesktopManager;
         private readonly KeyboardHook _keyboard = new KeyboardHook();
 
         private readonly Proxy _homeProxy;
@@ -64,6 +74,11 @@ namespace ActivitySpaces.Xaml
                 _buttonMargin = value;
                 NotifyPropertyChanged();
             }
+        }
+
+        protected override void UpdateInterface()
+        {
+           
         }
 
         Thickness _contentPanelMargin = new Thickness(0, 0, 0, 0);
@@ -165,18 +180,20 @@ namespace ActivitySpaces.Xaml
         }
 
         string _dataDirectory;
+        #endregion
 
         public ActivityBar()
         {
             InitializeComponent();
-
-            Loaded += ActivityBarLoaded;
 
             DataContext = this;
 
             Width = Height = 0;
             VerticalModeSize = 62;
             HorizontalModeSize = 40;
+
+            var settings = new LoadedSettings(true);
+            DesktopManager = new VirtualDesktopManager(settings);
 
             _startupDesktopPath = Environment.GetFolderPath( Environment.SpecialFolder.Desktop );
 
@@ -202,18 +219,11 @@ namespace ActivitySpaces.Xaml
                         {
                             Name = "Home"
                         }, 
-                    Desktop = _desktopManager.StartupDesktop
+                    Desktop = DesktopManager.StartupDesktop
                 };
             _currentProxy = _homeProxy;
 
             _proxies.Add( _homeProxy.Activity.Id, _homeProxy );
-
-            _windowMonitor = new WindowMonitor();
-            _windowMonitor.WindowActivated += wMon_WindowActivated;
-            _windowMonitor.WindowCreated += wMon_WindowCreated;
-            _windowMonitor.WindowDestroyed += wMon_WindowDestroyed;
-
-            _windowMonitor.Start();
 
             _keyboard.KeyPressed += KeyboardKeyPressed;
 
@@ -232,9 +242,59 @@ namespace ActivitySpaces.Xaml
             _panels.Add(pnlActivityButtons);
             _panels.Add(pnlButton);
             _panels.Add(pnlContent);
+     
+            RunDiscovery();
         }
 
-        #region Private Methods
+        private void StartClient(WebConfiguration config)
+        {
+            if (_client != null)
+                return;
+
+                _device = new Device()
+                {
+                    DeviceType = DeviceType.Laptop,
+                    TagValue = "204"
+                };
+
+                _client = new ActivityClient(config.Address, config.Port,_device);
+                _client.ActivityAdded += _client_ActivityAdded;
+                _client.ActivityRemoved += _client_ActivityRemoved;
+                _client.ResourceAdded += _client_ResourceAdded;
+
+                foreach (var act in _client.Activities.Values)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        AddActivitySpace(act as Activity);
+                    });
+                }
+        }
+
+        void _client_ResourceAdded(object sender, ResourceEventArgs e)
+        {
+        }
+        void _client_ActivityRemoved(object sender, NooSphere.Infrastructure.ActivityRemovedEventArgs e)
+        {
+            Dispatcher.Invoke(() => RemoveActivitySpaces(e.Id));
+        }
+        void _client_ActivityAdded(object sender, NooSphere.Infrastructure.ActivityEventArgs e)
+        {
+            Dispatcher.Invoke(() => AddActivitySpace(e.Activity as Activity));
+        }
+        private void RunDiscovery()
+        {
+            var disco = new DiscoveryManager();
+
+            disco.DiscoveryAddressAdded += (sender, e) =>
+            {
+                var foundWebConfiguration = new WebConfiguration(e.ServiceInfo.Address);
+                StartClient(foundWebConfiguration);
+            };
+            disco.Find(DiscoveryType.Zeroconf);
+
+        }
+
         protected override void UpdateBorders()
         {
             switch (DockPosition)
@@ -303,19 +363,19 @@ namespace ActivitySpaces.Xaml
                 menu.IsChecked = false;
             _dockingMenu[DockPosition].IsChecked = true;
         }
-        protected override void UpdateInterface()
-        {
-            //No UI changes needed
-        }
         public void AddEmptyActivity()
         {
-            AddActivitySpace(GetInitializedActivity());
+            var ac = GetInitializedActivity();
+            _client.AddActivity(ac);
         }
         private void RemoveActivitySpaces(string id)
         {
             Datalog.Log(LoggerType.ActivityRemoved, _proxies[id].Activity.Name + " {guid}:" + _proxies[id].Activity.Id);
             Dispatcher.Invoke(DispatcherPriority.Background, new System.Action(() =>
-                { if (pnlActivityButtons.Children != null) pnlActivityButtons.Children.Remove(_proxies[id].Button); }));
+            {
+                if (pnlActivityButtons.Children != null) 
+                    pnlActivityButtons.Children.Remove(_proxies[id].Button);
+            }));
             _proxies.Remove( id );
             Datalog.Log(LoggerType.ActivityRemoved, "Removed activity " + id);
 
@@ -324,10 +384,13 @@ namespace ActivitySpaces.Xaml
         {
             Dispatcher.Invoke(DispatcherPriority.Background, new System.Action(() =>
             {
-                var path = Directory.CreateDirectory(@"c://activities/" + activity.Id);
-                var p = new Proxy {Desktop = _desktopManager.CreateEmptyDesktop(path.FullName), Activity = activity};
+                var p = new Proxy {Desktop = DesktopManager.CreateEmptyDesktop(), Activity = activity};
 
-                var b = new ActivityButton(new Uri("pack://application:,,,/Images/activity.PNG"), activity.Name,this) { RenderMode = _selectedRenderStyle, ActivityId = p.Activity.Id, AllowDrop = true };
+
+                var b = new ActivityButton(activity.Logo != null ? _client.GetFileResourceUri(activity.Logo) : new Uri("pack://application:,,,/Images/activity.PNG"), activity.Name, this)
+                {
+                    RenderMode = _selectedRenderStyle, ActivityId = p.Activity.Id, AllowDrop = true
+                };
 
                 p.Button = b;
                 InitializeActivitySpacesButton( b );
@@ -407,26 +470,31 @@ namespace ActivitySpaces.Xaml
         public void DeleteActivity()
         {
             var proxy = GetProxyFromButton(_lastclickedButton);
-            _desktopManager.SwitchToDesktop(_homeProxy.Desktop);
+            DesktopManager.SwitchToDesktop(_homeProxy.Desktop);
             _currentProxy = _homeProxy;
-            _desktopManager.Merge(proxy.Desktop, _desktopManager.StartupDesktop);
+            DesktopManager.Merge(proxy.Desktop, DesktopManager.StartupDesktop);
 
-            Datalog.Log(LoggerType.ActivityRemoved, "Deleted activity " + proxy.Activity.Id);
-            RemoveActivitySpaces(proxy.Activity.Id);
+            //Datalog.Log(LoggerType.ActivityRemoved, "Deleted activity " + proxy.Activity.Id);
+            //RemoveActivitySpaces(proxy.Activity.Id);
+
+            _client.RemoveActivity(proxy.Activity.Id);
         }
-        public void EditActivity(Activity ac, bool renderText)
+        public void EditActivity(Activity ac, bool renderText,string imgPath)
         {
             if (_lastclickedButton.Text != ac.Name)
             {
                 Datalog.Log(LoggerType.ActivityButtonNameChanged, "Changed name of activity " +ac.Id +" from " + _lastclickedButton.Text + " to " + ac.Name);
                 _lastclickedButton.Text = ac.Name;
+                _client.UpdateActivity(ac);
             }
             if (ac.Meta.Data != null)
             {
-                if (File.Exists(ac.Meta.Data))
+                if (File.Exists(ac.Meta.Data) && imgPath !=null)
                 {
                     Datalog.Log(LoggerType.ActivityButtonIconChanged, "Changed icon of activity " + ac.Id + " from " + ac.Meta.Data + " to " + _lastclickedButton.Image);
                     _lastclickedButton.Image = new Uri(ac.Meta.Data);
+                    if (_lastclickedButton.Image == null) return;
+                    _client.AddFileResource(ac, "LOGO", new MemoryStream(File.ReadAllBytes(imgPath)));
                 }
             }
             var renderMode= renderText ? RenderMode.ImageAndText : RenderMode.Image;
@@ -441,58 +509,24 @@ namespace ActivitySpaces.Xaml
         }
         private void SwitchToProxy(Proxy proxy)
         {
-            _desktopManager.SwitchToDesktop(proxy.Desktop);
+           // DesktopManager.SwitchToDesktop(proxy.Desktop);
             Datalog.Log(LoggerType.ActivitySwitched, "Switched from activity " +_currentProxy.Activity + " to "+proxy.Desktop);
             _currentProxy = proxy;
             UpdateActivityButtons();
         }
         public void ExitApplication()
         {
-            DesktopManager.ChangeDesktopFolder(_startupDesktopPath);
+            ABC.Windows.DesktopManager.ChangeDesktopFolder(_startupDesktopPath);
 
             HideAllPopups();
 
-            SaveActivities();
+            //SaveActivities();
 
             Close();
 
-            _desktopManager.Close();
+            DesktopManager.Close();
 
             Environment.Exit(0);
-        }
-        private void SaveActivities()
-        {
-            var s = new DataContractSerializer(typeof(List<SavedProxy>));
-            using (var fs = File.Open(_dataDirectory + "activities.xml", FileMode.Create))
-            {
-                var sProxList = (from prox in _proxies.Values where prox != _homeProxy select prox.GetSaveableProxy()).ToList();
-                s.WriteObject(fs, sProxList);
-            }
-        }
-        private void LoadActivities()
-        {
-            if (!File.Exists(_dataDirectory + "activities.xml")) return;
-            var s = new DataContractSerializer(typeof(List<SavedProxy>));
-            using (var fs = File.Open(_dataDirectory+ "activities.xml", FileMode.Open))
-            {
-                var list = (List<SavedProxy>)s.ReadObject(fs);
-                foreach (var sProx in list)
-                {
-                    var proxy = new Proxy
-                        {
-                            Activity = sProx.Activity,
-                            Button = new ActivityButton(this)
-                                {
-                                    RenderMode = sProx.Button.RenderMode,
-                                    Image = sProx.Button.Image,
-                                    Text = sProx.Button.Text,
-                                    ActivityId = sProx.Activity.Id
-                                },
-                            Desktop = _desktopManager.CreateDesktopFromSession(sProx.Sessions,sProx.Folder)
-                        };
-                    AddActivitySpaces(proxy);
-                }
-            }
         }
         private void HideAllPopups()
         {
@@ -508,15 +542,8 @@ namespace ActivitySpaces.Xaml
         {
             _currentProxy = _homeProxy;
             UpdateActivityButtons();
-            _desktopManager.SwitchToDesktop(_homeProxy.Desktop);
+            DesktopManager.SwitchToDesktop(_homeProxy.Desktop);
             Datalog.Log(LoggerType.ActivityHome, "Startup activity");
-        }
-        #endregion
-
-        #region Event Handlers
-        private void ActivityBarLoaded(object sender, RoutedEventArgs e)
-        {
-            LoadActivities();
         }
         private void MenuItems_OnClick(object sender, RoutedEventArgs e)
         {
@@ -584,19 +611,6 @@ namespace ActivitySpaces.Xaml
                 }
             }
         }
-        private void wMon_WindowDestroyed(IntPtr oldWindowHandle)
-        {
-            Datalog.Log(LoggerType.WindowDestroyed, "Window " + oldWindowHandle + " closed");
-        }
-        private void wMon_WindowCreated(WindowInfo newWindow)
-        {
-            Datalog.Log(LoggerType.WindowCreated, "Window " + newWindow.GetTitle() + " opened");
-        }
-        private void wMon_WindowActivated(WindowInfo window, bool fullscreen)
-        {
-
-            Datalog.Log(LoggerType.WindowActivated, "Window " + window.GetTitle() + " opened");
-        }
         private void BMouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.RightButton == MouseButtonState.Pressed)
@@ -627,6 +641,9 @@ namespace ActivitySpaces.Xaml
             SwitchToProxy(_proxies[((ActivityButton) sender).ActivityId]);
             _currentProxy = _proxies[((ActivityButton) sender).ActivityId];
 
+            if(_client != null)
+                _client.SendMessage(MessageType.ActivityChanged, _proxies[((ActivityButton)sender).ActivityId].Activity.Id);
+
             UpdateActivityButtons();
         }
         private void BDragEnter(object sender, DragEventArgs e)
@@ -640,7 +657,31 @@ namespace ActivitySpaces.Xaml
             var droppedFilePaths =
                 e.Data.GetData(DataFormats.FileDrop, true) as string[];
             if (droppedFilePaths == null) return;
-            var fInfo = new FileInfo(droppedFilePaths[0]); ;
+
+            foreach (var dp in droppedFilePaths)
+            {
+                var fInfo = new FileInfo(dp);
+                var ext = fInfo.Extension;
+
+                if (File.Exists(fInfo.FullName))
+                {
+                    if (ext == ".pdf")
+                    {
+                        Task.Factory.StartNew(() =>
+                        {
+                            var res = PdfConverter.ConvertPdfToFileBytes(fInfo.FullName);
+                            if (res !=null)
+                                _client.AddFileResource(GetProxyFromButton((ActivityButton)sender).Activity, "PDF", new MemoryStream(res));
+
+                        });
+
+                    }
+                    else if(ext ==".jpg" || ext == ".png")
+                        _client.AddFileResource(GetProxyFromButton((ActivityButton)sender).Activity, "IMG", new MemoryStream(File.ReadAllBytes(fInfo.FullName)));
+                }
+            }
+
+           
         }
         private void btnClose_click(object sender, RoutedEventArgs e)
         {
@@ -661,7 +702,6 @@ namespace ActivitySpaces.Xaml
 
                 HideAllPopups();
         }
-        #endregion
 
         #region Helper
 

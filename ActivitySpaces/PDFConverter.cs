@@ -1,50 +1,165 @@
-﻿/****************************************************************************
- (c) 2012 Steven Houben(shou@itu.dk) and Søren Nielsen(snielsen@itu.dk)
-
- Pervasive Interaction Technology Laboratory (pIT lab)
- IT University of Copenhagen
-
- This library is free software; you can redistribute it and/or 
- modify it under the terms of the GNU GENERAL PUBLIC LICENSE V3 or later, 
- as published by the Free Software Foundation. Check 
- http://www.gnu.org/licenses/gpl.html for details.
-****************************************************************************/
-
-using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing.Imaging;
 using System.IO;
-
+using System.Linq;
+using System.Windows.Controls;
+using System.Windows.Media.Imaging;
+using ImageMagick;
 
 namespace ActivitySpaces
 {
-    public sealed class PDFConverter
+    public sealed class PdfConverter
     {
-        public static void PdfToJpg( string ghostScriptPath, string input, string output )
+        public static BitmapImage ConvertPdfThumbnail(string pathOfPdf)
         {
-            var ars = "-dNOPAUSE -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -r150*150 -o" + output + " " + input;
-                //all image generate with full clarity and same pixel size (1275*1650)
-            var proc = new Process
+            if (!File.Exists(pathOfPdf))
+                throw new FileNotFoundException("Invalid path");
+
+            var bitmapImage = new BitmapImage();
+
+            var settings = new MagickReadSettings
             {
-                StartInfo =
-                {
-                    FileName = ghostScriptPath,
-                    Arguments = ars,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                }
+                Density = new MagickGeometry(25, 25),
+                FrameIndex = 0,
+                FrameCount = 0
             };
-            proc.Start();
-            proc.WaitForExit();
+
+            using (var images = new MagickImageCollection())
+            {
+                images.Read(pathOfPdf, settings);
+                var bitmap = images.First().ToBitmap();
+                using (var memory = new MemoryStream())
+                {
+                    bitmap.Save(memory, ImageFormat.Bmp);
+                    memory.Position = 0;
+
+                    bitmapImage.BeginInit();
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.StreamSource = memory;
+                    bitmapImage.EndInit();
+                    bitmapImage.Freeze();
+                }
+                bitmap.Dispose();
+            }
+            return bitmapImage;
         }
 
-        public static string Convert( string path )
+        public static BitmapImage ConvertPdfToImage(string pathOfPdf)
         {
-            var ghostScriptPath = @"C:\Program Files (x86)\gs\gs9.01\bin\gswin32a.exe";
 
-            var filename = Path.GetFileNameWithoutExtension( path );
-            var directory = Path.GetDirectoryName( path );
-            var outputFileName = directory + filename + ".png";
-            PdfToJpg( ghostScriptPath, path, outputFileName );
-            return outputFileName;
+            if (!File.Exists(pathOfPdf))
+                throw new FileNotFoundException("Invalid path");
+
+            const int width = 595;
+            const int height = 841;
+            const float scale = 0.5f;
+
+            var bitmapImage = new BitmapImage();
+
+            var settings = new MagickReadSettings
+            {
+                Density = new MagickGeometry((int)(width * scale), (int)(height * scale))
+            };
+
+            using (var images = new MagickImageCollection())
+            {
+                images.Read(pathOfPdf, settings);
+
+                var vertical = images.AppendVertically();
+
+                var bitmap = vertical.ToBitmap(ImageFormat.Bmp);
+                using (var memory = new MemoryStream())
+                {
+                    bitmap.Save(memory, ImageFormat.Bmp);
+                    memory.Position = 0;
+
+                    bitmapImage.BeginInit();
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.StreamSource = memory;
+                    bitmapImage.EndInit();
+                    bitmapImage.Freeze();
+                }
+                bitmap.Dispose();
+            }
+            return bitmapImage;
+        }
+
+        public static Byte[] ConvertPdfToFileBytes(string pathOfPdf)
+        {
+
+            if (!File.Exists(pathOfPdf))
+                throw new FileNotFoundException("Invalid path");
+
+            //const int width = 595;
+            //const int height = 841;
+            //const float scale = 0.2f;
+
+            //var settings = new MagickReadSettings
+            //{
+            //    Density = new MagickGeometry((int)(width * scale), (int)(height * scale))
+            //};
+
+            var path = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName) + Guid.NewGuid()+".png";
+
+            using (var images = new MagickImageCollection())
+            {
+                images.Read(pathOfPdf);
+
+                var vertical = images.AppendVertically();
+
+                var bitmap = vertical.ToBitmap(ImageFormat.Png);
+                bitmap.Save(path);
+            }
+
+            var bytes =File.ReadAllBytes(path);
+
+            //File.Delete(path);
+            return bytes;
+        }
+
+        public static List<Image> ConvertPdfToImageList(string pathOfPdf)
+        {
+            if (!File.Exists(pathOfPdf))
+                throw new FileNotFoundException("Invalid path");
+
+            var imageList = new List<Image>();
+
+
+            const int width = 595;
+            const int height = 841;
+            const float scale = 0.4f;
+
+            var settings = new MagickReadSettings
+            {
+                Density = new MagickGeometry((int)(width * scale), (int)(height * scale))
+            };
+
+            using (var images = new MagickImageCollection())
+            {
+                images.Read(pathOfPdf, settings);
+
+                foreach (var pdfImage in images)
+                {
+                    var image = new Image();
+                    var bitmap = pdfImage.ToBitmap(ImageFormat.Bmp);
+                    using (var memory = new MemoryStream())
+                    {
+                        bitmap.Save(memory, ImageFormat.Bmp);
+                        memory.Position = 0;
+                        var bitmapImage = new BitmapImage();
+                        bitmapImage.BeginInit();
+                        bitmapImage.StreamSource = memory;
+                        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmapImage.EndInit();
+                        image.Source = bitmapImage;
+                    }
+                    bitmap.Dispose();
+                    imageList.Add(image);
+                }
+            }
+
+            return imageList;
         }
     }
 }

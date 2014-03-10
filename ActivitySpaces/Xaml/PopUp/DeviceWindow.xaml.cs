@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
-using ABC.Model.Device;
+using NooSphere.Model.Device;
 using ABC.PInvoke;
 using ActivitySpaces.Xaml;
 

@@ -1,11 +1,13 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
-using ABC.Model;
+using NooSphere.Model;
 using ABC.PInvoke;
+using Point = System.Windows.Point;
 
 namespace ActivitySpaces.Xaml.PopUp
 {
@@ -70,7 +72,7 @@ namespace ActivitySpaces.Xaml.PopUp
         private void btnDone_Click(object sender, RoutedEventArgs e)
         {
             _activity.Name = txtActivity.Text;
-            _taskbar.EditActivity(_activity,Convert.ToBoolean(chkRendering.IsChecked));
+            _taskbar.EditActivity(_activity,Convert.ToBoolean(chkRendering.IsChecked),ImagePath);
             Hide();
         }
         private void BtnChangePic_OnClick(object sender, RoutedEventArgs e)
@@ -94,8 +96,12 @@ namespace ActivitySpaces.Xaml.PopUp
             if (File.Exists(dlg.FileName))
             {
                 image.Source = new BitmapImage(new Uri(dlg.FileName));
+                ImagePath = dlg.FileName;
             }
         }
+
+        public string ImagePath { get; private set; }
+
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             e.Cancel = true;
