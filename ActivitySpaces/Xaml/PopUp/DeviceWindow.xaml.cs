@@ -22,7 +22,7 @@ namespace ActivitySpaces.PopUp
         protected override void OnSourceInitialized(EventArgs e)
         {
             IntPtr hwnd = new WindowInteropHelper(this).Handle;
-            User32.SetWindowLongPtr(hwnd, GWL_STYLE, (uint)User32.GetWindowLongPtr(hwnd, GWL_STYLE) & (0xFFFFFFFF ^ WS_SYSMENU));
+            User32.SetWindowLongPtr(hwnd, GWL_STYLE, (uint)Whathecode.Interop.User32.GetWindowLongPtr(hwnd, GWL_STYLE) & (0xFFFFFFFF ^ WS_SYSMENU));
 
             base.OnSourceInitialized(e);
         }

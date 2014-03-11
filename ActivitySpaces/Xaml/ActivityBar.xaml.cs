@@ -31,7 +31,6 @@ using Orientation = System.Windows.Controls.Orientation;
 using WindowInfo = ABC.Windows.Window;
 using WPFWindow = System.Windows.Window;
 using System.Threading.Tasks;
-using NooSphere.Model.Resources;
 
 namespace ActivitySpaces.Xaml
 {
