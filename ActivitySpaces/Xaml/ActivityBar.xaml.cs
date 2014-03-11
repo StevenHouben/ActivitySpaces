@@ -31,6 +31,7 @@ using Orientation = System.Windows.Controls.Orientation;
 using WindowInfo = ABC.Windows.Window;
 using WPFWindow = System.Windows.Window;
 using System.Threading.Tasks;
+using NooSphere.Model.Resources;
 
 namespace ActivitySpaces.Xaml
 {
@@ -261,6 +262,8 @@ namespace ActivitySpaces.Xaml
                 _client.ActivityAdded += _client_ActivityAdded;
                 _client.ActivityRemoved += _client_ActivityRemoved;
                 _client.ResourceAdded += _client_ResourceAdded;
+                _client.FileResourceAdded += _client_FileResourceAdded;
+                _client.MessageReceived += _client_MessageReceived;
 
                 foreach (var act in _client.Activities.Values)
                 {
@@ -271,8 +274,120 @@ namespace ActivitySpaces.Xaml
                 }
         }
 
+        void _client_FileResourceAdded(object sender, FileResourceEventArgs e)
+        {
+             var activityId = e.Resource.ActivityId;
+            var resource = e.Resource;
+
+            var prox = GetProxyFromId(activityId);
+            if (prox == null)
+                return;
+
+            var path = prox.Desktop.Folder;
+
+            var stream = _client.GetFileResource(resource);
+
+            FileStream fileStream = File.Create(path+"/"+resource.FileName, (int)stream.Length);
+            // Initialize the bytes array with the stream length and then fill it with data
+            byte[] bytesInStream = new byte[stream.Length];
+            stream.Read(bytesInStream, 0, bytesInStream.Length);
+            // Use write method to write to the file specified above
+            fileStream.Write(bytesInStream, 0, bytesInStream.Length);
+            fileStream.Close();
+            stream.Close();
+        }
+
+        void _client_MessageReceived(object sender, MessageEventArgs e)
+        {
+            switch (e.Message.Type)
+            {
+                //case MessageType.Resource:
+                //    var resource = e.Message.Content as FileResource;
+                //    if (resource != null)
+                //    {
+                //        Dispatcher.Invoke(() =>
+                //        {
+                //            LoadedResource loadedResource;
+                //            if (ResourceCache.ContainsKey(resource.Id))
+                //            {
+                //                loadedResource = ResourceCache[resource.Id];
+                //            }
+                //            else
+                //            {
+                //                loadedResource = FromResource(resource);
+                //                ResourceCache.Add(resource.Id, loadedResource);
+                //            }
+
+                //            ShowResource(loadedResource.Content);
+
+                //            LoadedResources.Add(loadedResource);
+                //        });
+                //    }
+                //    break;
+                //case MessageType.ResourceRemove:
+                //    var resourceToRemove = e.Message.Content as FileResource;
+                //    if (resourceToRemove != null)
+                //    {
+                //        Dispatcher.Invoke(() =>
+                //        {
+                //            LoadedResource rToR = null;
+                //            foreach (var res in LoadedResources)
+                //            {
+                //                if (res.Resource.Id == resourceToRemove.Id)
+                //                    rToR = res;
+                //            }
+                //            if (rToR != null)
+                //            {
+                //                LoadedResources.Remove(rToR);
+                //            }
+                //        });
+                //    }
+                //    else
+                //    {
+                //        Dispatcher.Invoke(ClearResources);
+                //    }
+                //    break;
+                case MessageType.ActivityChanged:
+
+                    Dispatcher.Invoke(DispatcherPriority.Background, new System.Action(() =>
+                    {
+                        var receivedActivityId = (string)e.Message.Content;
+                        Proxy foundProxy = null;
+                        foreach (var prox in _proxies.Values)
+                        {
+                            if (prox.Activity.Id == receivedActivityId)
+                                foundProxy = prox;
+                        }
+                        if (foundProxy == null)
+                            return;
+                        HideAllPopups();
+                        Datalog.Log(LoggerType.ActivitySwitched,
+                                    "Switch from " + _currentProxy.Activity.Id + " to " +
+                                    foundProxy.Activity.Id);
+
+                        SwitchToProxy(foundProxy);
+                        _currentProxy = foundProxy;
+
+                        UpdateActivityButtons();
+                    }));
+                  
+                    break;
+            }
+        }
+
+        Proxy GetProxyFromId(string id)
+        {
+            foreach (var prox in _proxies.Values)
+            {
+                if (prox.Activity.Id == id)
+                    return prox;
+            }
+            return null;
+        }
         void _client_ResourceAdded(object sender, ResourceEventArgs e)
         {
+           
+
         }
         void _client_ActivityRemoved(object sender, NooSphere.Infrastructure.ActivityRemovedEventArgs e)
         {
@@ -384,7 +499,14 @@ namespace ActivitySpaces.Xaml
         {
             Dispatcher.Invoke(DispatcherPriority.Background, new System.Action(() =>
             {
-                var p = new Proxy {Desktop = DesktopManager.CreateEmptyDesktop(), Activity = activity};
+                var path = @"c://activities/" + activity.Id;
+
+                if (!Directory.Exists(path))
+                {
+                    path = Directory.CreateDirectory(@"c://activities/" + activity.Id).FullName;
+                }
+
+                var p = new Proxy {Desktop = DesktopManager.CreateEmptyDesktop(path), Activity = activity};
 
 
                 var b = new ActivityButton(activity.Logo != null ? _client.GetFileResourceUri(activity.Logo) : new Uri("pack://application:,,,/Images/activity.PNG"), activity.Name, this)
@@ -494,7 +616,7 @@ namespace ActivitySpaces.Xaml
                     Datalog.Log(LoggerType.ActivityButtonIconChanged, "Changed icon of activity " + ac.Id + " from " + ac.Meta.Data + " to " + _lastclickedButton.Image);
                     _lastclickedButton.Image = new Uri(ac.Meta.Data);
                     if (_lastclickedButton.Image == null) return;
-                    _client.AddFileResource(ac, "LOGO", new MemoryStream(File.ReadAllBytes(imgPath)));
+                    _client.AddFileResource(ac, "LOGO",Path.GetFileName(imgPath), new MemoryStream(File.ReadAllBytes(imgPath)));
                 }
             }
             var renderMode= renderText ? RenderMode.ImageAndText : RenderMode.Image;
@@ -509,7 +631,7 @@ namespace ActivitySpaces.Xaml
         }
         private void SwitchToProxy(Proxy proxy)
         {
-           // DesktopManager.SwitchToDesktop(proxy.Desktop);
+           DesktopManager.SwitchToDesktop(proxy.Desktop);
             Datalog.Log(LoggerType.ActivitySwitched, "Switched from activity " +_currentProxy.Activity + " to "+proxy.Desktop);
             _currentProxy = proxy;
             UpdateActivityButtons();
@@ -671,13 +793,15 @@ namespace ActivitySpaces.Xaml
                         {
                             var res = PdfConverter.ConvertPdfToFileBytes(fInfo.FullName);
                             if (res !=null)
-                                _client.AddFileResource(GetProxyFromButton((ActivityButton)sender).Activity, "PDF", new MemoryStream(res));
+                                _client.AddFileResource(GetProxyFromButton((ActivityButton)sender).Activity, "PDF",
+                                    Path.GetFileName(fInfo.FullName), new MemoryStream(res));
 
                         });
 
                     }
                     else if(ext ==".jpg" || ext == ".png")
-                        _client.AddFileResource(GetProxyFromButton((ActivityButton)sender).Activity, "IMG", new MemoryStream(File.ReadAllBytes(fInfo.FullName)));
+                        _client.AddFileResource(GetProxyFromButton((ActivityButton)sender).Activity, "IMG", 
+                             Path.GetFileName(fInfo.FullName),new MemoryStream(File.ReadAllBytes(fInfo.FullName)));
                 }
             }
 
