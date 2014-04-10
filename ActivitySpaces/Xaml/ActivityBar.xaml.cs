@@ -243,7 +243,9 @@ namespace ActivitySpaces.Xaml
             _panels.Add(pnlButton);
             _panels.Add(pnlContent);
      
-            RunDiscovery();
+            //RunDiscovery();
+
+            StartClient(new WebConfiguration("10.6.6.176",8000));
         }
 
         private void StartClient(WebConfiguration config)
@@ -254,7 +256,7 @@ namespace ActivitySpaces.Xaml
                 _device = new Device()
                 {
                     DeviceType = DeviceType.Laptop,
-                    TagValue = "204"
+                    TagValue = "171"
                 };
 
                 _client = new ActivityClient(config.Address, config.Port,_device);
@@ -774,6 +776,8 @@ namespace ActivitySpaces.Xaml
         }
         private void BDrop(object sender, DragEventArgs e)
         {
+
+            var obj = e.Data.GetData(DataFormats.Text,true);
             if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
             var droppedFilePaths =
                 e.Data.GetData(DataFormats.FileDrop, true) as string[];
